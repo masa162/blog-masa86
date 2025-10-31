@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Node.js runtime優先（Cloudflare Pagesでのリンク安定性）
-  experimental: {
-    // 必要に応じて設定を追加
+  // Cloudflare Pages compatibility
+  eslint: {
+    ignoreDuringBuilds: false,
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  // Image optimization is not supported on Cloudflare Pages
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -12,6 +17,8 @@ const nextConfig = {
       },
     ],
   },
+  // Enable React strict mode
+  reactStrictMode: true,
 };
 
 module.exports = nextConfig;

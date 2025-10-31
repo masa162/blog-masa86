@@ -14,7 +14,7 @@ Cloudflare D1データベースとEdge Runtimeを使用し、グローバルに�
 - **言語**: TypeScript 5
 - **スタイリング**: Tailwind CSS 3.4 + Custom CSS
 - **データベース**: Cloudflare D1 (SQLite)
-- **Markdown**: marked + gray-matter
+- **Markdown**: カスタムEdge Runtime対応実装
 - **デプロイ**: Cloudflare Pages
 
 ## Cloudflare D1 セットアップ
