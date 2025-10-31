@@ -26,7 +26,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
       const response = await fetch(`/api/posts/${params.id}`);
       if (!response.ok) throw new Error('Failed to fetch');
       
-      const data = await response.json();
+      const data = await response.json() as { post: Post };
       setPost(data.post);
       setTitle(data.post.title);
       setContent(data.post.content);
@@ -74,7 +74,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
       
       if (!response.ok) throw new Error('Failed to update');
       
-      const data = await response.json();
+      const data = await response.json() as { post: Post };
       router.push(`/${data.post.slug}`);
     } catch (err) {
       setError('保存に失敗しました');

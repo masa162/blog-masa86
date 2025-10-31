@@ -4,13 +4,7 @@ import PostCard from '@/components/PostCard';
 import Sidebar from '@/components/Sidebar';
 
 export const runtime = 'edge';
-
-export async function generateStaticParams() {
-  const tags = await getAllTags();
-  return tags.map(tag => ({
-    tag: tag,
-  }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: { tag: string } }) {
   return {

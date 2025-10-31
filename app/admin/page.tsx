@@ -17,7 +17,7 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/posts?limit=100');
       if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
+      const data = await response.json() as { posts: Post[] };
       setPosts(data.posts);
     } catch (err) {
       setError('記事の読み込みに失敗しました');

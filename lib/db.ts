@@ -1,10 +1,15 @@
-import { getRequestContext } from '@cloudflare/next-on-pages';
 import { Post, DbPost } from './types';
 
+// Cloudflare環境変数の型定義
+type Env = {
+  DB: D1Database;
+};
+
 // Cloudflare D1 Database取得
-function getDb() {
-  const { env } = getRequestContext();
-  return env.DB;
+function getDb(): D1Database {
+  // @ts-ignore - getRequestContextはCloudflare Pages環境で利用可能
+  const context = getRequestContext();
+  return (context.env as Env).DB;
 }
 
 // DB形式からPost形式に変換
@@ -74,8 +79,8 @@ export async function getPostsCount(options: { tag?: string; search?: string } =
     params.push(`%${search}%`, `%${search}%`);
   }
 
-  const result = await db.prepare(query).bind(...params).first();
-  return (result as any).count;
+  const result = await db.prepare(query).bind(...params).first() as { count: number } | null;
+  return result ? result.count : 0;
 }
 
 // slugで記事取得
@@ -83,7 +88,7 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   const db = getDb();
   const result = await db.prepare('SELECT * FROM posts WHERE slug = ?').bind(slug).first();
   
-  return result ? dbPostToPost(result as DbPost) : null;
+  return result ? dbPostToPost(result as unknown as DbPost) : null;
 }
 
 // IDで記事取得
@@ -91,7 +96,7 @@ export async function getPostById(id: number): Promise<Post | null> {
   const db = getDb();
   const result = await db.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first();
   
-  return result ? dbPostToPost(result as DbPost) : null;
+  return result ? dbPostToPost(result as unknown as DbPost) : null;
 }
 
 // 記事作成
@@ -99,8 +104,8 @@ export async function createPost(data: { title: string; content: string; tags: s
   const db = getDb();
   
   // 次のslugを生成
-  const lastPost = await db.prepare('SELECT slug FROM posts ORDER BY slug DESC LIMIT 1').first();
-  const nextSlugNumber = lastPost ? parseInt((lastPost as any).slug) + 1 : 1;
+  const lastPost = await db.prepare('SELECT slug FROM posts ORDER BY slug DESC LIMIT 1').first() as { slug: string } | null;
+  const nextSlugNumber = lastPost ? parseInt(lastPost.slug) + 1 : 1;
   const slug = String(nextSlugNumber).padStart(4, '0');
   
   const now = new Date().toISOString();
@@ -156,8 +161,8 @@ export async function getAllTags(): Promise<string[]> {
   const { results } = await db.prepare('SELECT tags FROM posts').all();
   
   const tagsSet = new Set<string>();
-  results.forEach((row: any) => {
-    const tags = JSON.parse(row.tags) as string[];
+  (results as unknown[]).forEach((row) => {
+    const tags = JSON.parse((row as { tags: string }).tags) as string[];
     tags.forEach(tag => tagsSet.add(tag));
   });
   
@@ -177,7 +182,8 @@ export async function getArchive(): Promise<{ [year: number]: ArchiveMonth[] }> 
   
   const archive: { [year: number]: { [month: number]: ArchiveMonth } } = {};
   
-  results.forEach((row: any) => {
+  (results as unknown[]).forEach((rawRow) => {
+    const row = rawRow as { id: number; slug: string; title: string; created_at: string };
     const date = new Date(row.created_at);
     const year = date.getFullYear();
     const month = date.getMonth() + 1;

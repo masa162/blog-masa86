@@ -6,13 +6,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import Sidebar from '@/components/Sidebar';
 
 export const runtime = 'edge';
-
-export async function generateStaticParams() {
-  const posts = await getPosts({ limit: 1000 });
-  return posts.map(post => ({
-    slug: post.slug,
-  }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const post = await getPostBySlug(params.slug);

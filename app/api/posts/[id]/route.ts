@@ -59,7 +59,7 @@ export async function PUT(
       );
     }
     
-    const body = await request.json();
+    const body = await request.json() as { title: string; content: string; tags?: string[] };
     const { title, content, tags } = body;
     
     // バリデーション

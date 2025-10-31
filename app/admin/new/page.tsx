@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Post } from '@/lib/types';
 
 const AVAILABLE_TAGS = ['web', '日常', '読書', '技術', '旅行', 'グルメ', 'エンタメ'];
 
@@ -50,7 +51,7 @@ export default function NewPostPage() {
       
       if (!response.ok) throw new Error('Failed to create');
       
-      const data = await response.json();
+      const data = await response.json() as { post: Post };
       router.push(`/${data.post.slug}`);
     } catch (err) {
       setError('保存に失敗しました');
