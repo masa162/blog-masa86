@@ -1,8 +1,12 @@
+import { markdownToHtml } from '@/lib/markdown';
+
 interface MarkdownRendererProps {
-  html: string;
+  content: string;
 }
 
-export default function MarkdownRenderer({ html }: MarkdownRendererProps) {
+export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  const html = markdownToHtml(content);
+  
   return (
     <div
       className="prose prose-lg dark:prose-invert max-w-none
@@ -13,7 +17,7 @@ export default function MarkdownRenderer({ html }: MarkdownRendererProps) {
         prose-p:my-4
         prose-a:text-blue-600 dark:prose-a:text-blue-400
         prose-img:rounded-lg prose-img:my-6
-        prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+        prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
         prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800 prose-pre:p-4 prose-pre:rounded-lg
         prose-blockquote:border-l-4 prose-blockquote:border-accent prose-blockquote:pl-4 prose-blockquote:italic
       "
@@ -21,4 +25,3 @@ export default function MarkdownRenderer({ html }: MarkdownRendererProps) {
     />
   );
 }
-

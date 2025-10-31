@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getPostBySlug, getAllTags, getArchive, getPosts } from '@/lib/db';
-import { markdownToHtml } from '@/lib/markdown';
+import { getPostBySlug, getAllTags, getArchive } from '@/lib/db';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import Sidebar from '@/components/Sidebar';
 
@@ -30,7 +29,6 @@ export default async function PostPage({ params }: { params: { slug: string } })
     notFound();
   }
   
-  const html = await markdownToHtml(post.content);
   const tags = await getAllTags();
   const archive = await getArchive();
   
@@ -57,7 +55,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
               </header>
               
               <div className="mb-8">
-                <MarkdownRenderer html={html} />
+                <MarkdownRenderer content={post.content} />
               </div>
               
               {/* タグ */}
