@@ -3,6 +3,8 @@ import { getPosts, getPostsCount, getAllTags, getArchive } from '@/lib/db';
 import PostCard from '@/components/PostCard';
 import Sidebar from '@/components/Sidebar';
 
+export const runtime = 'edge';
+
 export const metadata = {
   title: '記事一覧 | 中山雑記',
   description: 'すべての記事一覧',

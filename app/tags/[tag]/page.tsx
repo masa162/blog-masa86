@@ -3,6 +3,8 @@ import { getPosts, getAllTags, getArchive } from '@/lib/db';
 import PostCard from '@/components/PostCard';
 import Sidebar from '@/components/Sidebar';
 
+export const runtime = 'edge';
+
 export async function generateStaticParams() {
   const tags = getAllTags();
   return tags.map(tag => ({

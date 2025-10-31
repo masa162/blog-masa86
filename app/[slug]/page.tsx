@@ -5,6 +5,8 @@ import { markdownToHtml } from '@/lib/markdown';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import Sidebar from '@/components/Sidebar';
 
+export const runtime = 'edge';
+
 export async function generateStaticParams() {
   const posts = getPosts({ limit: 1000 });
   return posts.map(post => ({

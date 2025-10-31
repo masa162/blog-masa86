@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPosts, getPostsCount, createPost } from '@/lib/db';
 import { verifyBasicAuth, unauthorizedResponse } from '@/lib/auth';
 
+export const runtime = 'edge';
+
 // GET /api/posts - 記事一覧取得
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
