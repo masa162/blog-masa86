@@ -71,12 +71,19 @@ GitHubリポジトリと連携してデプロイ：
 4. ビルド設定:
    - Build command: `npx @cloudflare/next-on-pages`
    - Build output directory: `.vercel/output/static`
-5. 環境変数（必要な場合）を設定
-6. D1バインディングを設定:
+5. D1バインディングを設定:
    - Settings → Functions → D1 database bindings
-   - 変数名: `DB`
-   - D1データベース: `blog-masa86-db`
-7. デプロイを実行
+   - 「Add binding」をクリック
+   - **Variable name**: `DB`
+   - **D1 database**: `blog-masa86-db` を選択
+   - Save
+6. **Compatibility Flagsを設定**（重要）:
+   - Settings → Functions → Compatibility Flags
+   - **Production**: `nodejs_compat` を追加
+   - **Preview**: `nodejs_compat` を追加
+   - Save
+   - ⚠️ **注意**: wrangler.tomlには書かないこと。ダッシュボードで設定する。
+7. デプロイを実行（または自動デプロイを待つ）
 
 ## プロジェクト構造
 

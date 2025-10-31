@@ -72,9 +72,16 @@ wrangler d1 execute blog-masa86-db --file=exported-data.sql
    - **Build output directory**: `.vercel/output/static`
 5. D1バインディングを設定:
    - Settings → Functions → D1 database bindings
-   - 変数名: `DB`
-   - D1データベース: `blog-masa86-db`
-6. Deploy
+   - 「Add binding」をクリック
+   - **Variable name**: `DB`
+   - **D1 database**: `blog-masa86-db` を選択
+   - Save
+6. **Compatibility Flagsを設定**（重要）:
+   - Settings → Functions → Compatibility Flags
+   - **Production**: `nodejs_compat` を追加
+   - **Preview**: `nodejs_compat` を追加
+   - Save
+7. Deploy
 
 ## アーキテクチャ
 
