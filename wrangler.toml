@@ -8,5 +8,5 @@ pages_build_output_dir = ".vercel/output/static"
 [[d1_databases]]
 binding = "DB"
 database_name = "blog-masa86-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+database_id = "61ad6de6-087f-43b1-ac9d-a96e470c9f95"
 
