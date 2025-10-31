@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search') || undefined;
   
   try {
-    const posts = getPosts({ limit, offset, tag, search });
-    const total = getPostsCount({ tag, search });
+    const posts = await getPosts({ limit, offset, tag, search });
+    const total = await getPostsCount({ tag, search });
     
     return NextResponse.json({
       posts,
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const post = createPost({
+    const post = await createPost({
       title,
       content,
       tags: tags || [],

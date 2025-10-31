@@ -1,8 +1,10 @@
 import { getPosts, getAllTags } from '@/lib/db';
 
+export const runtime = 'edge';
+
 export async function GET() {
-  const posts = getPosts({ limit: 10000 });
-  const tags = getAllTags();
+  const posts = await getPosts({ limit: 10000 });
+  const tags = await getAllTags();
   const baseUrl = 'https://blog.masa86.com';
   
   const postUrls = posts.map(post => `

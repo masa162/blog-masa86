@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 export const runtime = 'edge';
 
 export async function generateStaticParams() {
-  const tags = getAllTags();
+  const tags = await getAllTags();
   return tags.map(tag => ({
     tag: tag,
   }));
@@ -19,11 +19,11 @@ export async function generateMetadata({ params }: { params: { tag: string } }) 
   };
 }
 
-export default function TagPage({ params }: { params: { tag: string } }) {
+export default async function TagPage({ params }: { params: { tag: string } }) {
   const tag = decodeURIComponent(params.tag);
-  const allPosts = getPosts({ limit: 1000, tag });
-  const allTags = getAllTags();
-  const archive = getArchive();
+  const allPosts = await getPosts({ limit: 1000, tag });
+  const allTags = await getAllTags();
+  const archive = await getArchive();
   
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">

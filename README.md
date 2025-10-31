@@ -1,52 +1,82 @@
 # blog-masa86
 
-masa86.comの雑記ブログ - Next.js 14.2 + TypeScript + Tailwind CSS
+masa86.comの雑記ブログ - Next.js 14.2 + Cloudflare D1
 
 ## 概要
 
 このプロジェクトは、長期運用（30年目標）を見据えた堅牢で高速なブログシステムです。
-Hugoから移行し、Next.js App Routerで再構築されています。
+Cloudflare D1データベースとEdge Runtimeを使用し、グローバルに高速なパフォーマンスを実現します。
 
 ## 技術スタック
 
-- **フレームワーク**: Next.js 14.2 (App Router)
+- **フレームワーク**: Next.js 14.2 (App Router) + Edge Runtime
 - **ランタイム**: React 18.3
 - **言語**: TypeScript 5
-- **スタイリング**: Tailwind CSS 3.4
-- **データベース**: SQLite (better-sqlite3) / Cloudflare D1対応準備済み
+- **スタイリング**: Tailwind CSS 3.4 + Custom CSS
+- **データベース**: Cloudflare D1 (SQLite)
 - **Markdown**: marked + gray-matter
+- **デプロイ**: Cloudflare Pages
 
-## 開発環境のセットアップ
+## Cloudflare D1 セットアップ
 
-### 1. 依存関係のインストール
-
-```bash
-npm install
-```
-
-### 2. データベースの初期化とHugo記事の移行
+### 1. Wranglerのインストールとログイン
 
 ```bash
-npm run migrate
+npm install -g wrangler
+wrangler login
 ```
 
-このコマンドは、D:\github\masa86\content\postsから既存のHugo記事を読み込み、
-データベースに移行します（約50記事）。
-
-### 3. 開発サーバーの起動
+### 2. D1データベースの作成
 
 ```bash
-npm run dev
+wrangler d1 create blog-masa86-db
 ```
 
-ブラウザで http://localhost:3000 にアクセス
+出力されたdatabase_idをコピーして、`wrangler.toml`ファイルを更新：
 
-## ビルド
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-masa86-db"
+database_id = "your-database-id-here"  # ここに実際のIDを貼り付け
+```
+
+### 3. スキーマの適用
 
 ```bash
-npm run build
-npm run start
+wrangler d1 execute blog-masa86-db --file=schema.sql
 ```
+
+### 4. データのインポート
+
+既存のHugo記事データをエクスポート：
+
+```bash
+npm run export-data
+```
+
+D1にデータをインポート：
+
+```bash
+wrangler d1 execute blog-masa86-db --file=exported-data.sql
+```
+
+### 5. Cloudflare Pagesにデプロイ
+
+GitHubリポジトリと連携してデプロイ：
+
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/)にアクセス
+2. Pages → Create a project
+3. GitHubリポジトリを選択: `blog-masa86`
+4. ビルド設定:
+   - Build command: `npx @cloudflare/next-on-pages`
+   - Build output directory: `.vercel/output/static`
+5. 環境変数（必要な場合）を設定
+6. D1バインディングを設定:
+   - Settings → Functions → D1 database bindings
+   - 変数名: `DB`
+   - D1データベース: `blog-masa86-db`
+7. デプロイを実行
 
 ## プロジェクト構造
 
@@ -54,25 +84,25 @@ npm run start
 blog-masa86/
 ├── app/                    # Next.js App Router
 │   ├── page.tsx           # トップページ（最新5件）
-│   ├── [slug]/            # 記事詳細ページ
-│   ├── posts/             # 記事一覧ページ
-│   ├── tags/[tag]/        # タグ別ページ
+│   ├── [slug]/page.tsx    # 記事詳細ページ
+│   ├── posts/page.tsx     # 記事一覧ページ
+│   ├── tags/[tag]/page.tsx # タグ別ページ
 │   ├── admin/             # 管理画面
 │   ├── api/posts/         # API Routes
-│   └── sitemap.xml/       # 動的サイトマップ
+│   └── sitemap.xml/route.ts
 ├── components/            # Reactコンポーネント
-│   ├── PostCard.tsx       # 記事カード
-│   ├── Sidebar.tsx        # サイドバー（アーカイブ、タグ）
+│   ├── PostCard.tsx
+│   ├── Sidebar.tsx
 │   └── MarkdownRenderer.tsx
 ├── lib/                   # ユーティリティ
-│   ├── db.ts              # データベース操作
-│   ├── markdown.ts        # Markdown処理
-│   ├── auth.ts            # Basic認証
-│   └── types.ts           # TypeScript型定義
+│   ├── db.ts              # D1データベース操作
+│   ├── markdown.ts
+│   ├── auth.ts
+│   └── types.ts
 ├── scripts/
-│   └── migrate-hugo.ts    # Hugo記事移行スクリプト
-└── public/
-    └── robots.txt
+│   └── export-data.ts     # データエクスポートツール
+├── wrangler.toml          # Cloudflare設定
+└── schema.sql             # D1スキーマ
 ```
 
 ## 主な機能
@@ -80,7 +110,7 @@ blog-masa86/
 ### 公開機能
 - **トップページ**: 最新5件の記事をカード表示
 - **記事詳細**: Markdownレンダリング、YouTube埋め込み対応
-- **記事一覧**: 全記事表示、タグ絞り込み、キーワード検索
+- **記事一覧**: 全記事表示、タグ絞り込み、キーワード検索、ページネーション
 - **タグページ**: タグ別記事一覧
 - **サイドバー**: アーカイブ（年月階層）、タグ一覧
 - **レスポンシブ**: デスクトップ2カラム、モバイルハンバーガーメニュー
@@ -98,6 +128,38 @@ blog-masa86/
 - `/robots.txt`: クローラー制御
 - メタタグ: 各ページで適切に設定
 
+## ローカル開発
+
+**注意**: このプロジェクトはCloudflare D1専用です。ローカル開発にはWranglerが必要です。
+
+### 開発サーバーの起動
+
+```bash
+# 依存関係のインストール
+npm install
+
+# Wrangler devモードで起動
+wrangler pages dev npm run dev
+```
+
+または、Cloudflare D1のローカルバインディングを使用：
+
+```bash
+npm run dev
+```
+
+### ビルド
+
+```bash
+npm run build
+```
+
+Cloudflare Pages用のビルド：
+
+```bash
+npm run pages:build
+```
+
 ## データベース
 
 ### postsテーブル
@@ -112,7 +174,7 @@ blog-masa86/
 | created_at | TEXT | 作成日時（ISO 8601） |
 | updated_at | TEXT | 更新日時（ISO 8601） |
 
-### CRUD API
+### API
 
 - `GET /api/posts` - 記事一覧取得（limit, tag, search対応）
 - `GET /api/posts/[id]` - 記事詳細取得
@@ -122,29 +184,42 @@ blog-masa86/
 
 ## 設計思想
 
+### Edge-First Architecture
+- **Cloudflare D1**: グローバルに分散されたSQLiteデータベース
+- **Edge Runtime**: 世界中のエッジロケーションで実行
+- **高速レスポンス**: ユーザーに最も近いロケーションから配信
+
 ### 長期運用のための原則
-- **枯れた技術**: 安定版の採用（Next.js 14.2, React 18.3）
 - **シンプルな実装**: 複雑性を避け、保守性を優先
-- **段階的な実装**: 各フェーズでビルド確認
-- **依存関係の最小化**: 必要最小限のライブラリ
+- **クリーンなコード**: 環境分岐なし、D1専用の明快な実装
+- **堅牢性**: Edge Runtimeでの安定動作を保証
 
-### post-masa86からの教訓
-- ✅ Node.js runtime使用（Cloudflare Pagesでのリンク安定性）
-- ✅ サーバーコンポーネント優先（SEO最適化）
-- ✅ Link内のネストを回避
-- ✅ プレーンテキストプレビュー（HTMLレンダリング最小限）
-- ❌ dangerouslySetInnerHTMLの多用を回避
-- ❌ 全ページへのedge runtime適用を回避
+## デプロイ
 
-## Cloudflare Pages デプロイ準備
+### 自動デプロイ
 
-このプロジェクトは、Cloudflare Pagesでのデプロイに対応しています。
-ローカル開発ではbetter-sqlite3を使用し、本番環境ではCloudflare D1への移行が可能です。
+GitHubにpushすると、Cloudflare Pagesが自動的にビルド・デプロイします。
 
-### 今後の対応
-- wrangler.toml設定
-- D1データベース作成と接続
-- @cloudflare/next-on-pages統合
+### 手動デプロイ
+
+```bash
+npm run pages:deploy
+```
+
+## トラブルシューティング
+
+### D1接続エラー
+
+`getRequestContext()`エラーが出る場合は、Edge Runtime設定を確認：
+- すべての動的ルートで `export const runtime = 'edge';` が設定されているか確認
+
+### ビルドエラー
+
+```bash
+# キャッシュをクリア
+rm -rf .next .vercel/output
+npm run build
+```
 
 ## ライセンス
 
@@ -154,3 +229,13 @@ Private
 
 masa86 / unbelong
 
+---
+
+## 補足: データ移行について
+
+既存のbetter-sqlite3データベースからD1への移行は以下の手順で行います：
+
+1. `npm run export-data` - SQLiteデータをSQLファイルにエクスポート
+2. `wrangler d1 execute blog-masa86-db --file=exported-data.sql` - D1にインポート
+
+49記事が正常に移行されます。

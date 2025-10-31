@@ -2,16 +2,18 @@ import { getPosts, getAllTags, getArchive } from '@/lib/db';
 import PostCard from '@/components/PostCard';
 import Sidebar from '@/components/Sidebar';
 
+export const runtime = 'edge';
+
 export const metadata = {
   title: '中山雑記',
   description: '記録と感覚の交差点、unbelongの雑記ブログ。',
 };
 
-export default function HomePage() {
+export default async function HomePage() {
   // 最新5件の記事を取得
-  const posts = getPosts({ limit: 5 });
-  const tags = getAllTags();
-  const archive = getArchive();
+  const posts = await getPosts({ limit: 5 });
+  const tags = await getAllTags();
+  const archive = await getArchive();
   
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">

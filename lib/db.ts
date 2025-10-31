@@ -1,26 +1,10 @@
-import Database from 'better-sqlite3';
+import { getRequestContext } from '@cloudflare/next-on-pages';
 import { Post, DbPost } from './types';
-import path from 'path';
 
-const dbPath = path.join(process.cwd(), 'blog.db');
-const db = new Database(dbPath);
-
-// データベース初期化
-export function initDatabase() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      tags TEXT NOT NULL DEFAULT '[]',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
-    CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
-  `);
+// Cloudflare D1 Database取得
+function getDb() {
+  const { env } = getRequestContext();
+  return env.DB;
 }
 
 // DB形式からPost形式に変換
@@ -39,7 +23,7 @@ function postToDbPost(post: Omit<Post, 'id'> & { id?: number }): Omit<DbPost, 'i
   };
 }
 
-// 記事一覧取得
+// 記事一覧取得オプション
 export interface GetPostsOptions {
   limit?: number;
   offset?: number;
@@ -47,8 +31,10 @@ export interface GetPostsOptions {
   search?: string;
 }
 
-export function getPosts(options: GetPostsOptions = {}): Post[] {
+// 記事一覧取得
+export async function getPosts(options: GetPostsOptions = {}): Promise<Post[]> {
   const { limit = 20, offset = 0, tag, search } = options;
+  const db = getDb();
   
   let query = 'SELECT * FROM posts WHERE 1=1';
   const params: any[] = [];
@@ -66,15 +52,14 @@ export function getPosts(options: GetPostsOptions = {}): Post[] {
   query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
-  const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as DbPost[];
-  
-  return rows.map(dbPostToPost);
+  const { results } = await db.prepare(query).bind(...params).all();
+  return results.map((row: any) => dbPostToPost(row as DbPost));
 }
 
 // 記事総数取得
-export function getPostsCount(options: { tag?: string; search?: string } = {}): number {
+export async function getPostsCount(options: { tag?: string; search?: string } = {}): Promise<number> {
   const { tag, search } = options;
+  const db = getDb();
   
   let query = 'SELECT COUNT(*) as count FROM posts WHERE 1=1';
   const params: any[] = [];
@@ -89,33 +74,33 @@ export function getPostsCount(options: { tag?: string; search?: string } = {}): 
     params.push(`%${search}%`, `%${search}%`);
   }
 
-  const stmt = db.prepare(query);
-  const result = stmt.get(...params) as { count: number };
-  
-  return result.count;
+  const result = await db.prepare(query).bind(...params).first();
+  return (result as any).count;
 }
 
 // slugで記事取得
-export function getPostBySlug(slug: string): Post | null {
-  const stmt = db.prepare('SELECT * FROM posts WHERE slug = ?');
-  const row = stmt.get(slug) as DbPost | undefined;
+export async function getPostBySlug(slug: string): Promise<Post | null> {
+  const db = getDb();
+  const result = await db.prepare('SELECT * FROM posts WHERE slug = ?').bind(slug).first();
   
-  return row ? dbPostToPost(row) : null;
+  return result ? dbPostToPost(result as DbPost) : null;
 }
 
 // IDで記事取得
-export function getPostById(id: number): Post | null {
-  const stmt = db.prepare('SELECT * FROM posts WHERE id = ?');
-  const row = stmt.get(id) as DbPost | undefined;
+export async function getPostById(id: number): Promise<Post | null> {
+  const db = getDb();
+  const result = await db.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first();
   
-  return row ? dbPostToPost(row) : null;
+  return result ? dbPostToPost(result as DbPost) : null;
 }
 
 // 記事作成
-export function createPost(data: { title: string; content: string; tags: string[] }): Post {
+export async function createPost(data: { title: string; content: string; tags: string[] }): Promise<Post> {
+  const db = getDb();
+  
   // 次のslugを生成
-  const lastPost = db.prepare('SELECT slug FROM posts ORDER BY slug DESC LIMIT 1').get() as { slug: string } | undefined;
-  const nextSlugNumber = lastPost ? parseInt(lastPost.slug) + 1 : 1;
+  const lastPost = await db.prepare('SELECT slug FROM posts ORDER BY slug DESC LIMIT 1').first();
+  const nextSlugNumber = lastPost ? parseInt((lastPost as any).slug) + 1 : 1;
   const slug = String(nextSlugNumber).padStart(4, '0');
   
   const now = new Date().toISOString();
@@ -128,53 +113,50 @@ export function createPost(data: { title: string; content: string; tags: string[
     updated_at: now,
   });
   
-  const stmt = db.prepare(`
+  const result = await db.prepare(`
     INSERT INTO posts (slug, title, content, tags, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  
-  const result = stmt.run(
+  `).bind(
     dbPost.slug,
     dbPost.title,
     dbPost.content,
     dbPost.tags,
     dbPost.created_at,
     dbPost.updated_at
-  );
+  ).run();
   
-  return getPostById(Number(result.lastInsertRowid))!;
+  return (await getPostById(result.meta.last_row_id as number))!;
 }
 
 // 記事更新
-export function updatePost(id: number, data: { title: string; content: string; tags: string[] }): Post | null {
+export async function updatePost(id: number, data: { title: string; content: string; tags: string[] }): Promise<Post | null> {
+  const db = getDb();
   const now = new Date().toISOString();
   
-  const stmt = db.prepare(`
+  await db.prepare(`
     UPDATE posts
     SET title = ?, content = ?, tags = ?, updated_at = ?
     WHERE id = ?
-  `);
-  
-  stmt.run(data.title, data.content, JSON.stringify(data.tags), now, id);
+  `).bind(data.title, data.content, JSON.stringify(data.tags), now, id).run();
   
   return getPostById(id);
 }
 
 // 記事削除
-export function deletePost(id: number): boolean {
-  const stmt = db.prepare('DELETE FROM posts WHERE id = ?');
-  const result = stmt.run(id);
+export async function deletePost(id: number): Promise<boolean> {
+  const db = getDb();
+  const result = await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
   
-  return result.changes > 0;
+  return result.meta.changes > 0;
 }
 
 // 全タグ取得
-export function getAllTags(): string[] {
-  const stmt = db.prepare('SELECT tags FROM posts');
-  const rows = stmt.all() as { tags: string }[];
+export async function getAllTags(): Promise<string[]> {
+  const db = getDb();
+  const { results } = await db.prepare('SELECT tags FROM posts').all();
   
   const tagsSet = new Set<string>();
-  rows.forEach(row => {
+  results.forEach((row: any) => {
     const tags = JSON.parse(row.tags) as string[];
     tags.forEach(tag => tagsSet.add(tag));
   });
@@ -189,13 +171,13 @@ export interface ArchiveMonth {
   posts: { id: number; slug: string; title: string }[];
 }
 
-export function getArchive(): { [year: number]: ArchiveMonth[] } {
-  const stmt = db.prepare('SELECT id, slug, title, created_at FROM posts ORDER BY created_at DESC');
-  const rows = stmt.all() as { id: number; slug: string; title: string; created_at: string }[];
+export async function getArchive(): Promise<{ [year: number]: ArchiveMonth[] }> {
+  const db = getDb();
+  const { results } = await db.prepare('SELECT id, slug, title, created_at FROM posts ORDER BY created_at DESC').all();
   
   const archive: { [year: number]: { [month: number]: ArchiveMonth } } = {};
   
-  rows.forEach(row => {
+  results.forEach((row: any) => {
     const date = new Date(row.created_at);
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
@@ -224,9 +206,3 @@ export function getArchive(): { [year: number]: ArchiveMonth[] } {
   
   return result;
 }
-
-// データベース初期化を実行
-initDatabase();
-
-export default db;
-

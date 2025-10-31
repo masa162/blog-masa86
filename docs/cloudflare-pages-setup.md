@@ -1,23 +1,13 @@
-# Cloudflare Pages デプロイ設定
+# Cloudflare Pages デプロイガイド
 
-## 現在の状況
+## 概要
 
-このプロジェクトは現在、ローカル開発用に`better-sqlite3`を使用していますが、Cloudflare PagesのEdge Runtimeでは動作しません。
+このプロジェクトは完全にCloudflare D1とEdge Runtime用に最適化されています。
+シンプルでクリーンなコードで、高速なグローバル配信を実現します。
 
-## デプロイエラー
+## セットアップ手順
 
-```
-ERROR: Failed to produce a Cloudflare Pages build from the project.
-The following routes were not configured to run with the Edge Runtime
-```
-
-## 解決方法
-
-### オプション1: Cloudflare D1に移行（推奨）
-
-Cloudflare D1データベースに切り替える必要があります。
-
-#### 1. D1データベースの作成
+### ステップ1: D1データベースの作成
 
 ```bash
 # Wranglerのインストール
@@ -34,9 +24,9 @@ wrangler d1 create blog-masa86-db
 # database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-#### 2. wrangler.tomlの作成
+### ステップ2: wrangler.tomlの更新
 
-プロジェクトルートに`wrangler.toml`を作成：
+`wrangler.toml`ファイルのdatabase_idを更新：
 
 ```toml
 name = "blog-masa86"
@@ -48,115 +38,85 @@ database_name = "blog-masa86-db"
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # 実際のIDに置き換える
 ```
 
-#### 3. D1テーブルの初期化
+### ステップ3: D1テーブルの初期化
 
 ```bash
-# スキーマファイルの作成
-cat > schema.sql << 'EOF'
-CREATE TABLE IF NOT EXISTS posts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  slug TEXT NOT NULL UNIQUE,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  tags TEXT NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE INDEX idx_posts_slug ON posts(slug);
-CREATE INDEX idx_posts_created_at ON posts(created_at DESC);
-EOF
-
+# schema.sqlファイルは既に用意されています
 # D1にスキーマを適用
 wrangler d1 execute blog-masa86-db --file=schema.sql
 ```
 
-#### 4. データベース接続の修正
+### ステップ4: データの移行
 
-`lib/db.ts`を修正してD1を使用するように変更：
-
-```typescript
-// Cloudflare D1用の実装
-interface Env {
-  DB: D1Database;
-}
-
-// getRequestContext()からD1を取得
-export function getDb(): D1Database {
-  // Cloudflare Pagesの環境でDBを取得
-  const { env } = getRequestContext();
-  return env.DB;
-}
-```
-
-#### 5. データの移行
-
-既存のSQLiteデータをD1に移行：
+既存のHugoブログデータをエクスポート：
 
 ```bash
-# 既存データをSQLにエクスポート
-sqlite3 blog.db .dump > data.sql
-
-# D1にインポート
-wrangler d1 execute blog-masa86-db --file=data.sql
+# Node.jsスクリプトでデータをエクスポート
+npm run export-data
 ```
 
-### オプション2: 静的サイト生成のみ使用
+D1にデータをインポート：
 
-動的なデータベースアクセスを諦め、完全な静的サイトとして生成する方法。
-
-#### next.config.jsの修正
-
-```javascript
-module.exports = {
-  output: 'export',
-  // ...
-};
+```bash
+wrangler d1 execute blog-masa86-db --file=exported-data.sql
 ```
 
-**制限事項：**
-- 管理画面（/admin）が使用できない
-- APIルートが使用できない
-- ビルド時のデータのみ表示可能
+### ステップ5: Cloudflare Pagesにデプロイ
 
-### オプション3: Vercelなど別のプラットフォームにデプロイ
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/)にアクセス
+2. Pages → Create a project
+3. GitHubリポジトリを選択
+4. ビルド設定:
+   - **Framework preset**: Next.js
+   - **Build command**: `npx @cloudflare/next-on-pages`
+   - **Build output directory**: `.vercel/output/static`
+5. D1バインディングを設定:
+   - Settings → Functions → D1 database bindings
+   - 変数名: `DB`
+   - D1データベース: `blog-masa86-db`
+6. Deploy
 
-Node.js runtimeをサポートするプラットフォームを使用：
+## アーキテクチャ
 
-- **Vercel**: Next.jsの開発元、Node.js完全サポート
-- **Netlify**: Node.js関数サポート
-- **Railway**: フルNode.jsサポート
+### Edge-First Design
 
-## 推奨アプローチ
+このプロジェクトは完全にEdge Runtime用に設計されています：
 
-長期運用を考えると、**Cloudflare D1への移行**が最適です。理由：
+- **lib/db.ts**: `getRequestContext()`を使用してD1にアクセス
+- **すべてのルート**: `export const runtime = 'edge'`を設定
+- **async/await**: すべてのデータベース操作は非同期
 
-1. ✅ Edge Runtimeで高速
-2. ✅ Cloudflare Pagesとの統合が優れている
-3. ✅ スケーラビリティが高い
-4. ✅ コストが低い
-5. ✅ 管理画面も動作する
+### コードのシンプルさ
 
-## 次のステップ
+環境分岐なし、D1専用の実装により：
+- ✅ コードが読みやすい
+- ✅ メンテナンスが容易
+- ✅ バグが少ない
+- ✅ パフォーマンスが最適化
 
-1. Cloudflare D1データベースを作成
-2. `lib/db.ts`をD1対応に書き換え
-3. `wrangler.toml`を追加
-4. データを移行
-5. 再デプロイ
+## トラブルシューティング
 
-## 開発環境の維持
+### getRequestContext() エラー
 
-ローカル開発では引き続き`better-sqlite3`を使用し、本番環境のみD1を使用する設定も可能です。
+Edge Runtime環境外でコードを実行するとエラーになります。すべてのページで `export const runtime = 'edge';` が設定されているか確認してください。
 
-```typescript
-// lib/db.ts
-const isDevelopment = process.env.NODE_ENV === 'development';
+### D1バインディングが見つからない
 
-if (isDevelopment) {
-  // better-sqlite3を使用
-} else {
-  // D1を使用
-}
-```
+Cloudflare Pagesの設定でD1バインディングが正しく設定されているか確認してください。
+
+## 利点
+
+### パフォーマンス
+- **グローバル配信**: 世界中のエッジロケーションから高速配信
+- **低レイテンシ**: ユーザーに最も近いロケーションで実行
+- **スケーラブル**: 自動スケーリング
+
+### コスト
+- **無料枠が大きい**: Cloudflare Pagesの無料プランで十分
+- **従量課金**: 使った分だけ支払い
+
+### 開発体験
+- **シンプルなコード**: 環境分岐なし
+- **型安全**: TypeScript完全対応
+- **デプロイが簡単**: GitHubにpushするだけ
 

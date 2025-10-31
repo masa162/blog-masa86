@@ -10,7 +10,7 @@ export const metadata = {
   description: 'すべての記事一覧',
 };
 
-export default function PostsPage({
+export default async function PostsPage({
   searchParams,
 }: {
   searchParams: { page?: string; tags?: string; q?: string };
@@ -22,8 +22,8 @@ export default function PostsPage({
   const searchQuery = searchParams.q;
   
   // タグがある場合は、各タグで絞り込み（AND条件）
-  let posts = getPosts({ limit, offset, search: searchQuery });
-  let total = getPostsCount({ search: searchQuery });
+  let posts = await getPosts({ limit, offset, search: searchQuery });
+  let total = await getPostsCount({ search: searchQuery });
   
   if (searchTags && searchTags.length > 0) {
     // 複数タグでのAND絞り込み
@@ -31,15 +31,15 @@ export default function PostsPage({
       searchTags.every(tag => post.tags.includes(tag))
     );
     // 総数も再計算
-    const allPosts = getPosts({ limit: 10000, search: searchQuery });
+    const allPosts = await getPosts({ limit: 10000, search: searchQuery });
     total = allPosts.filter(post =>
       searchTags.every(tag => post.tags.includes(tag))
     ).length;
   }
   
   const totalPages = Math.ceil(total / limit);
-  const allTags = getAllTags();
-  const archive = getArchive();
+  const allTags = await getAllTags();
+  const archive = await getArchive();
   
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">

@@ -1,0 +1,12 @@
+name = "blog-masa86"
+compatibility_date = "2025-10-31"
+pages_build_output_dir = ".vercel/output/static"
+
+# Cloudflare D1 Database Binding
+# Note: Update database_id after creating the D1 database
+# Run: wrangler d1 create blog-masa86-db
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-masa86-db"
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+

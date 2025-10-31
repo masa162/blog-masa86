@@ -19,7 +19,7 @@ export async function GET(
       );
     }
     
-    const post = getPostById(id);
+    const post = await getPostById(id);
     
     if (!post) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function PUT(
       );
     }
     
-    const post = updatePost(id, {
+    const post = await updatePost(id, {
       title,
       content,
       tags: tags || [],
@@ -114,7 +114,7 @@ export async function DELETE(
       );
     }
     
-    const success = deletePost(id);
+    const success = await deletePost(id);
     
     if (!success) {
       return NextResponse.json(

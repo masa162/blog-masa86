@@ -8,14 +8,14 @@ import Sidebar from '@/components/Sidebar';
 export const runtime = 'edge';
 
 export async function generateStaticParams() {
-  const posts = getPosts({ limit: 1000 });
+  const posts = await getPosts({ limit: 1000 });
   return posts.map(post => ({
     slug: post.slug,
   }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const post = getPostBySlug(params.slug);
+  const post = await getPostBySlug(params.slug);
   
   if (!post) {
     return {
@@ -30,15 +30,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function PostPage({ params }: { params: { slug: string } }) {
-  const post = getPostBySlug(params.slug);
+  const post = await getPostBySlug(params.slug);
   
   if (!post) {
     notFound();
   }
   
   const html = await markdownToHtml(post.content);
-  const tags = getAllTags();
-  const archive = getArchive();
+  const tags = await getAllTags();
+  const archive = await getArchive();
   
   const createdDate = new Date(post.created_at).toLocaleDateString('ja-JP', {
     year: 'numeric',
